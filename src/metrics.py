@@ -109,7 +109,7 @@ def win_rate(trades: List[dict]) -> float:
     """% of trades with positive P&L after all costs"""
     if not trades: 
         return 0.0
-    wins = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) > 0]
+    wins = [t for t in trades if (t.get('pnl', 0) if isinstance(t, dict) else t) > 0]
     return len(wins) / len(trades)
 
 def average_win_loss_ratio(trades: List[dict]) -> float:
@@ -117,11 +117,11 @@ def average_win_loss_ratio(trades: List[dict]) -> float:
     if not trades: 
         return 0.0
     
-    wins = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) > 0]
-    losses = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) <= 0]
+    wins = [t for t in trades if (t.get('pnl', 0) if isinstance(t, dict) else t) > 0]
+    losses = [t for t in trades if (t.get('pnl', 0) if isinstance(t, dict) else t) <= 0]
     
-    avg_win = (sum(w.get('pnl', w) if isinstance(w, dict) else w for w in wins) / len(wins)) if wins else 0.0
-    avg_loss = (sum(abs(l.get('pnl', l) if isinstance(l, dict) else l) for l in losses) / len(losses)) if losses else 0.0
+    avg_win = (sum(w.get('pnl', 0) if isinstance(w, dict) else w for w in wins) / len(wins)) if wins else 0.0
+    avg_loss = (sum(abs(l.get('pnl', 0) if isinstance(l, dict) else l) for l in losses) / len(losses)) if losses else 0.0
     
     if avg_loss == 0.0:
         return float('inf')
@@ -132,8 +132,8 @@ def profit_factor(trades: List[dict]) -> float:
     if not trades: 
         return 0.0
     
-    gross_profit = sum(t.get('pnl', t) if isinstance(t, dict) else t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) > 0)
-    gross_loss = sum(abs(t.get('pnl', t) if isinstance(t, dict) else t) for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) < 0)
+    gross_profit = sum(t.get('pnl', 0) if isinstance(t, dict) else t for t in trades if (t.get('pnl', 0) if isinstance(t, dict) else t) > 0)
+    gross_loss = sum(abs(t.get('pnl', 0) if isinstance(t, dict) else t) for t in trades if (t.get('pnl', 0) if isinstance(t, dict) else t) < 0)
     
     if gross_loss == 0.0:
         return float('inf')
@@ -144,7 +144,7 @@ def max_consecutive_losses(trades: List[dict]) -> int:
     max_streak = 0
     current_streak = 0
     for t in trades:
-        val = t.get('pnl', t) if isinstance(t, dict) else t
+        val = t.get('pnl', 0) if isinstance(t, dict) else t
         if val <= 0:
             current_streak += 1
             if current_streak > max_streak:
@@ -160,14 +160,14 @@ def trade_expectancy(trades: List[dict]) -> float:
     """
     if not trades: 
         return 0.0
-    wins = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) > 0]
-    losses = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) <= 0]
+    wins = [t for t in trades if (t.get('pnl', 0) if isinstance(t, dict) else t) > 0]
+    losses = [t for t in trades if (t.get('pnl', 0) if isinstance(t, dict) else t) <= 0]
     
     win_rt = len(wins) / len(trades)
     loss_rt = len(losses) / len(trades)
     
-    avg_win = (sum(w.get('pnl', w) if isinstance(w, dict) else w for w in wins) / len(wins)) if wins else 0.0
-    avg_loss = (sum(abs(l.get('pnl', l) if isinstance(l, dict) else l) for l in losses) / len(losses)) if losses else 0.0
+    avg_win = (sum(w.get('pnl', 0) if isinstance(w, dict) else w for w in wins) / len(wins)) if wins else 0.0
+    avg_loss = (sum(abs(l.get('pnl', 0) if isinstance(l, dict) else l) for l in losses) / len(losses)) if losses else 0.0
     
     return (win_rt * avg_win) - (loss_rt * avg_loss)
 

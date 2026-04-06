@@ -2,10 +2,11 @@ import os
 from flask import Flask, request, jsonify, render_template
 from src.orchestrator import run_orchestrator
 from src.storage import init_db
+from src.data_sources import get_catalog_for_ui
 
 app = Flask(__name__)
 
-# Initialize DB tables for runs alongside prices on boot
+# Initialize DB tables on boot
 init_db()
 
 @app.route('/')
@@ -18,8 +19,7 @@ def backtest():
         config = request.json
         if not config:
             return jsonify({"error": "No configuration provided"}), 400
-            
-        # Dispatch to orchestrator bridging constraints, pricing, validation and strategy logic
+
         payload = run_orchestrator(config)
         return jsonify(payload)
     except Exception as e:
@@ -27,8 +27,12 @@ def backtest():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/instruments', methods=['GET'])
+def instruments():
+    """Return the full instrument catalog for dynamic UI population."""
+    return jsonify(get_catalog_for_ui())
+
 if __name__ == '__main__':
-    # Guarantee static and templates folders exist
     os.makedirs(os.path.join(os.path.dirname(__file__), "templates"), exist_ok=True)
-    # Changed port to 8080 because macOS Monterey+ reserves port 5000 for AirPlay Receiver (causing Access Denied)
+    os.makedirs(os.path.join(os.path.dirname(__file__), "static", "charts"), exist_ok=True)
     app.run(debug=True, port=8080)

@@ -3,55 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NSE Quant Engine Terminal</title>
+    <title>Indian Markets Quant Engine</title>
     <link rel="stylesheet" href="/static/css/app.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar Parametric Input -->
+        <!-- Sidebar -->
         <aside class="glass-orb controls-container">
             <div class="brand">
                 <div class="brand-dot"></div>
-                <h2>Quantum Backtester</h2>
+                <h2>Indian Markets Backtester</h2>
             </div>
-            
+
             <form id="backtest-form" class="controls-form">
                 <div class="input-group">
                     <label>Strategy Engine</label>
                     <select name="strategy" id="strategy">
-                        <option value="orb">Opening Range Breakout</option>
-                        <option value="straddle">BankNifty Straddle</option>
-                        <option value="vwap_mean_reversion">VWAP Mean Reversion</option>
-                        <option value="bollinger_mean_reversion">Bollinger Bands</option>
                         <option value="sma_crossover">SMA Crossover</option>
+                        <option value="bollinger_mean_reversion">Bollinger Bands</option>
                         <option value="rsi_divergence">RSI Divergence</option>
                         <option value="donchian_breakout">Donchian Breakout</option>
                         <option value="gap_fill">Overnight Gap Fill</option>
+                        <option value="orb" data-intraday="true">Opening Range Breakout</option>
+                        <option value="vwap_mean_reversion" data-intraday="true">VWAP Mean Reversion</option>
+                        <option value="straddle">BankNifty Straddle</option>
                     </select>
                 </div>
-                
+
                 <div class="input-row">
                     <div class="input-group">
                         <label>Instrument Type</label>
                         <select id="instrument-type">
-                            <option value="stocks">Stocks (NSE)</option>
-                            <option value="indices">Indices (NSE)</option>
-                            <option value="derivatives">Derivatives (NSE/BSE)</option>
+                            <optgroup label="Equities">
+                                <option value="nse_nifty50">NIFTY 50 Stocks</option>
+                                <option value="nse_niftynext50">NIFTY Next 50</option>
+                                <option value="nse_midcap">Midcap Stocks</option>
+                                <option value="nse_smallcap">Smallcap Stocks</option>
+                            </optgroup>
+                            <optgroup label="Indices">
+                                <option value="nse_index">NSE Indices</option>
+                                <option value="bse_index">BSE Indices</option>
+                            </optgroup>
+                            <optgroup label="Derivatives (F&O)">
+                                <option value="nse_index_futures">Index Futures</option>
+                                <option value="nse_stock_futures">Stock Futures</option>
+                            </optgroup>
+                            <optgroup label="Commodities">
+                                <option value="mcx_commodity">MCX Commodities</option>
+                                <option value="ncdex_commodity">NCDEX Agri Commodities</option>
+                            </optgroup>
+                            <optgroup label="Currency">
+                                <option value="indian_forex">Indian Forex (CDS)</option>
+                            </optgroup>
+                            <optgroup label="ETFs & Funds">
+                                <option value="indian_etf">Indian ETFs</option>
+                                <option value="indian_mf">Mutual Funds</option>
+                            </optgroup>
+                            <optgroup label="Alternatives">
+                                <option value="indian_reit">REITs</option>
+                                <option value="indian_invit">InvITs</option>
+                            </optgroup>
+                            <optgroup label="Fixed Income">
+                                <option value="indian_gsec">Government Securities</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option value="sgx_nifty">SGX / GIFT Nifty</option>
+                            </optgroup>
                         </select>
                     </div>
+                </div>
+
+                <div class="input-row">
                     <div class="input-group">
                         <label>Specific Asset</label>
-                        <select name="ticker" id="ticker">
-                            <!-- Populated dynamically via JS -->
-                        </select>
+                        <select name="ticker" id="ticker"></select>
                     </div>
                     <div class="input-group">
                         <label>Interval</label>
                         <select name="interval" id="interval">
+                            <option value="1d">Daily</option>
                             <option value="15m">15 Min Intraday</option>
                             <option value="5m">5 Min Intraday</option>
-                            <option value="1d">Daily Delivery</option>
+                            <option value="1m">1 Min Intraday</option>
                         </select>
                     </div>
                 </div>
@@ -68,7 +103,7 @@
                 </div>
 
                 <div class="input-group">
-                    <label>Initial Capital (₹)</label>
+                    <label>Initial Capital (INR)</label>
                     <input type="number" name="initial_capital" id="initial_capital" value="100000" step="10000">
                 </div>
 
@@ -79,15 +114,15 @@
             </form>
         </aside>
 
-        <!-- Main Display Analytics -->
+        <!-- Main Display -->
         <main class="analytics-container">
             <div id="welcome-state" class="welcome-state glass-orb">
                 <h3>System Ready</h3>
-                <p>Awaiting simulation parameters to generate trade metrics and trajectory bounds.</p>
+                <p>Select an instrument and strategy, then click Execute Simulation.</p>
             </div>
 
             <div id="results-state" class="results-state" style="display: none;">
-                <!-- Key Metrics Scroller -->
+                <!-- KPI Cards -->
                 <div class="kpi-grid">
                     <div class="kpi-card glass-orb">
                         <span class="label">Total Return</span>
@@ -111,18 +146,26 @@
                     </div>
                 </div>
 
-                <!-- Deep Analytics Table & Chart -->
+                <!-- Charts & Analytics -->
                 <div class="detailed-analytics">
+                    <!-- Interactive Candlestick Chart -->
                     <div class="chart-container glass-orb">
                         <div class="header-row">
-                            <h4>Portfolio Equity Trajectory</h4>
+                            <h4 id="chart-title">Price Chart</h4>
                             <span id="run-id-badge" class="badge">Run-ID: NULL</span>
                         </div>
-                        <img id="equity-chart" src="" alt="Equity Curve">
+                        <div id="candlestick-chart" style="width:100%; flex:1; min-height:380px;"></div>
+                        <!-- Tab bar for chart toggle -->
+                        <div class="chart-tabs">
+                            <button class="chart-tab active" data-tab="price" onclick="switchChart('price')">Candlestick</button>
+                            <button class="chart-tab" data-tab="equity" onclick="switchChart('equity')">Equity Curve</button>
+                        </div>
                     </div>
-                    
+
+                    <!-- Metrics Panel -->
                     <div class="metrics-list glass-orb list-view">
                         <h4>Terminal Analytics</h4>
+                        <div class="meta-row"><span>Instrument</span> <strong id="m-instrument">-</strong></div>
                         <div class="meta-row"><span>Sortino Ratio</span> <strong id="m-sortino">-</strong></div>
                         <div class="meta-row"><span>Calmar Ratio</span> <strong id="m-calmar">-</strong></div>
                         <div class="meta-row"><span>Max Drawdown</span> <strong id="m-max-dd" class="red">-</strong></div>
@@ -131,49 +174,316 @@
                         <div class="meta-row"><span>Avg Win/Loss</span> <strong id="m-awl">-</strong></div>
                         <div class="meta-row"><span>Walk-Forward Degradation</span> <strong id="m-deg">-</strong></div>
                         <hr>
-                        <div class="meta-row total-row"><span>Execution Costs</span> <strong id="m-costs" class="red">₹-</strong></div>
-                        <div class="meta-row total-row highlighter"><span>Trade Expectancy</span> <strong id="m-exp" class="green">₹-</strong></div>
+                        <div class="meta-row total-row"><span>Execution Costs</span> <strong id="m-costs" class="red">-</strong></div>
+                        <div class="meta-row total-row highlighter"><span>Trade Expectancy</span> <strong id="m-exp" class="green">-</strong></div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <style>
+        .chart-tabs {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .chart-tab {
+            padding: 6px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chart-tab:hover { background: rgba(255,255,255,0.1); }
+        .chart-tab.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        /* make sidebar scrollable if too many fields */
+        .controls-container { overflow-y: auto; }
+    </style>
+
     <script>
+        // ==================================================================
+        // INSTRUMENT CATALOG
+        // ==================================================================
         const instrumentMap = {
-            stocks: [
+            nse_nifty50: [
                 { id: "RELIANCE.NS", label: "Reliance Industries" },
                 { id: "TCS.NS", label: "Tata Consultancy Services" },
                 { id: "HDFCBANK.NS", label: "HDFC Bank" },
                 { id: "ICICIBANK.NS", label: "ICICI Bank" },
                 { id: "INFY.NS", label: "Infosys" },
-                { id: "ITC.NS", label: "ITC Ltd" },
+                { id: "HINDUNILVR.NS", label: "Hindustan Unilever" },
+                { id: "ITC.NS", label: "ITC" },
                 { id: "SBIN.NS", label: "State Bank of India" },
                 { id: "BHARTIARTL.NS", label: "Bharti Airtel" },
-                { id: "LARSEN.NS", label: "Larsen & Toubro" },
-                { id: "BAJFINANCE.NS", label: "Bajaj Finance" }
+                { id: "BAJFINANCE.NS", label: "Bajaj Finance" },
+                { id: "KOTAKBANK.NS", label: "Kotak Mahindra Bank" },
+                { id: "LT.NS", label: "Larsen & Toubro" },
+                { id: "AXISBANK.NS", label: "Axis Bank" },
+                { id: "MARUTI.NS", label: "Maruti Suzuki" },
+                { id: "SUNPHARMA.NS", label: "Sun Pharmaceutical" },
+                { id: "TATAMOTORS.NS", label: "Tata Motors" },
+                { id: "WIPRO.NS", label: "Wipro" },
+                { id: "HCLTECH.NS", label: "HCL Technologies" },
+                { id: "ADANIENT.NS", label: "Adani Enterprises" },
+                { id: "ADANIPORTS.NS", label: "Adani Ports & SEZ" },
+                { id: "POWERGRID.NS", label: "Power Grid Corporation" },
+                { id: "NTPC.NS", label: "NTPC" },
+                { id: "ULTRACEMCO.NS", label: "UltraTech Cement" },
+                { id: "TITAN.NS", label: "Titan Company" },
+                { id: "ASIANPAINT.NS", label: "Asian Paints" },
+                { id: "NESTLEIND.NS", label: "Nestle India" },
+                { id: "TATASTEEL.NS", label: "Tata Steel" },
+                { id: "JSWSTEEL.NS", label: "JSW Steel" },
+                { id: "ONGC.NS", label: "ONGC" },
+                { id: "TECHM.NS", label: "Tech Mahindra" },
+                { id: "M&M.NS", label: "Mahindra & Mahindra" },
+                { id: "BAJAJFINSV.NS", label: "Bajaj Finserv" },
+                { id: "HDFCLIFE.NS", label: "HDFC Life Insurance" },
+                { id: "SBILIFE.NS", label: "SBI Life Insurance" },
+                { id: "DIVISLAB.NS", label: "Divi's Laboratories" },
+                { id: "DRREDDY.NS", label: "Dr Reddy's" },
+                { id: "CIPLA.NS", label: "Cipla" },
+                { id: "BPCL.NS", label: "Bharat Petroleum" },
+                { id: "COALINDIA.NS", label: "Coal India" },
+                { id: "EICHERMOT.NS", label: "Eicher Motors" },
+                { id: "GRASIM.NS", label: "Grasim Industries" },
+                { id: "HEROMOTOCO.NS", label: "Hero MotoCorp" },
+                { id: "INDUSINDBK.NS", label: "IndusInd Bank" },
+                { id: "APOLLOHOSP.NS", label: "Apollo Hospitals" },
+                { id: "BRITANNIA.NS", label: "Britannia Industries" },
+                { id: "HINDALCO.NS", label: "Hindalco Industries" },
+                { id: "TATACONSUM.NS", label: "Tata Consumer Products" },
+                { id: "BAJAJ-AUTO.NS", label: "Bajaj Auto" },
+                { id: "LTIM.NS", label: "LTIMindtree" },
             ],
-            indices: [
-                { id: "^NSEI", label: "NIFTY 50" },
-                { id: "^NSEBANK", label: "NIFTY Bank" },
-                { id: "^CNXIT", label: "NIFTY IT" },
-                { id: "^CNXAUTO", label: "NIFTY Auto" },
-                { id: "^CNXFMCG", label: "NIFTY FMCG" }
+            nse_niftynext50: [
+                { id: "ABB.NS", label: "ABB India" }, { id: "ADANIGREEN.NS", label: "Adani Green" },
+                { id: "AMBUJACEM.NS", label: "Ambuja Cements" }, { id: "BANKBARODA.NS", label: "Bank of Baroda" },
+                { id: "CHOLAFIN.NS", label: "Cholamandalam" }, { id: "DLF.NS", label: "DLF" },
+                { id: "DABUR.NS", label: "Dabur India" }, { id: "GAIL.NS", label: "GAIL" },
+                { id: "HAVELLS.NS", label: "Havells India" }, { id: "INDIGO.NS", label: "IndiGo" },
+                { id: "IOC.NS", label: "Indian Oil" }, { id: "IRCTC.NS", label: "IRCTC" },
+                { id: "LUPIN.NS", label: "Lupin" }, { id: "MARICO.NS", label: "Marico" },
+                { id: "PNB.NS", label: "Punjab National Bank" }, { id: "SIEMENS.NS", label: "Siemens India" },
+                { id: "TRENT.NS", label: "Trent" }, { id: "VEDL.NS", label: "Vedanta" },
+                { id: "ZOMATO.NS", label: "Zomato" }, { id: "POLYCAB.NS", label: "Polycab India" },
             ],
-            derivatives: [
-                { id: "NIFTY_FUT", label: "Nifty Futures (Synthesized)" },
-                { id: "BANKNIFTY_FUT", label: "Bank Nifty Futures (Synthesized)" },
-                { id: "RELIANCE_FUT", label: "Reliance Futures" }
-            ]
+            nse_midcap: [
+                { id: "BEL.NS", label: "Bharat Electronics" }, { id: "HAL.NS", label: "HAL" },
+                { id: "DIXON.NS", label: "Dixon Technologies" }, { id: "TATAPOWER.NS", label: "Tata Power" },
+                { id: "TATAELXSI.NS", label: "Tata Elxsi" }, { id: "PERSISTENT.NS", label: "Persistent Systems" },
+                { id: "COFORGE.NS", label: "Coforge" }, { id: "MPHASIS.NS", label: "Mphasis" },
+                { id: "OBEROIRLTY.NS", label: "Oberoi Realty" }, { id: "MRF.NS", label: "MRF" },
+                { id: "PFC.NS", label: "Power Finance Corp" }, { id: "RECLTD.NS", label: "REC Limited" },
+                { id: "IRFC.NS", label: "IRFC" }, { id: "TVSMOTOR.NS", label: "TVS Motor" },
+                { id: "MAXHEALTH.NS", label: "Max Healthcare" }, { id: "FEDERALBNK.NS", label: "Federal Bank" },
+            ],
+            nse_smallcap: [
+                { id: "ANGELONE.NS", label: "Angel One" }, { id: "CDSL.NS", label: "CDSL" },
+                { id: "DMART.NS", label: "DMart" }, { id: "LICI.NS", label: "LIC" },
+                { id: "SUZLON.NS", label: "Suzlon Energy" }, { id: "SAIL.NS", label: "SAIL" },
+                { id: "KPITTECH.NS", label: "KPIT Technologies" }, { id: "MAZDOCK.NS", label: "Mazagon Dock" },
+                { id: "HINDPETRO.NS", label: "HPCL" }, { id: "IDBI.NS", label: "IDBI Bank" },
+                { id: "NATIONALUM.NS", label: "NALCO" }, { id: "HDFCAMC.NS", label: "HDFC AMC" },
+            ],
+            nse_index: [
+                { id: "^NSEI", label: "NIFTY 50" }, { id: "^NSEBANK", label: "NIFTY Bank" },
+                { id: "^CNXIT", label: "NIFTY IT" }, { id: "^CNXAUTO", label: "NIFTY Auto" },
+                { id: "^CNXFMCG", label: "NIFTY FMCG" }, { id: "^CNXMETAL", label: "NIFTY Metal" },
+                { id: "^CNXPHARMA", label: "NIFTY Pharma" }, { id: "^CNXREALTY", label: "NIFTY Realty" },
+                { id: "^CNXENERGY", label: "NIFTY Energy" }, { id: "^CNXINFRA", label: "NIFTY Infra" },
+                { id: "^CNXFIN", label: "NIFTY Financial Services" }, { id: "^CNX500", label: "NIFTY 500" },
+                { id: "^INDIAVIX", label: "India VIX" },
+            ],
+            bse_index: [
+                { id: "^BSESN", label: "S&P BSE SENSEX" }, { id: "BSE500.BO", label: "BSE 500" },
+            ],
+            nse_index_futures: [
+                { id: "NIFTY_FUT", label: "Nifty 50 Futures" }, { id: "BANKNIFTY_FUT", label: "Bank Nifty Futures" },
+                { id: "FINNIFTY_FUT", label: "FinNifty Futures" }, { id: "MIDCPNIFTY_FUT", label: "Midcap Nifty Futures" },
+            ],
+            nse_stock_futures: [
+                { id: "RELIANCE_FUT", label: "Reliance Futures" }, { id: "TCS_FUT", label: "TCS Futures" },
+                { id: "HDFCBANK_FUT", label: "HDFC Bank Futures" }, { id: "ICICIBANK_FUT", label: "ICICI Bank Futures" },
+                { id: "INFY_FUT", label: "Infosys Futures" }, { id: "SBIN_FUT", label: "SBI Futures" },
+                { id: "BAJFINANCE_FUT", label: "Bajaj Finance Futures" }, { id: "TATAMOTORS_FUT", label: "Tata Motors Futures" },
+                { id: "TATASTEEL_FUT", label: "Tata Steel Futures" }, { id: "LT_FUT", label: "L&T Futures" },
+                { id: "DLF_FUT", label: "DLF Futures" }, { id: "HAL_FUT", label: "HAL Futures" },
+            ],
+            mcx_commodity: [
+                { id: "GOLD", label: "Gold (1 kg)" }, { id: "GOLDM", label: "Gold Mini" },
+                { id: "SILVER", label: "Silver (30 kg)" }, { id: "SILVERM", label: "Silver Mini" },
+                { id: "CRUDEOIL", label: "Crude Oil" }, { id: "CRUDEOILM", label: "Crude Oil Mini" },
+                { id: "NATURALGAS", label: "Natural Gas" }, { id: "COPPER", label: "Copper" },
+                { id: "ZINC", label: "Zinc" }, { id: "LEAD", label: "Lead" },
+                { id: "NICKEL", label: "Nickel" }, { id: "ALUMINIUM", label: "Aluminium" },
+                { id: "COTTON", label: "Cotton" },
+            ],
+            ncdex_commodity: [
+                { id: "SOYBEAN", label: "Soybean" }, { id: "CASTORSEED", label: "Castor Seed" },
+                { id: "GUARSEED", label: "Guar Seed" }, { id: "JEERA", label: "Jeera (Cumin)" },
+                { id: "TURMERIC", label: "Turmeric" }, { id: "CORIANDER", label: "Coriander" },
+                { id: "CHANA", label: "Chana" }, { id: "MUSTARD", label: "Mustard Seed" },
+            ],
+            indian_forex: [
+                { id: "USDINR=X", label: "USD/INR" }, { id: "EURINR=X", label: "EUR/INR" },
+                { id: "GBPINR=X", label: "GBP/INR" }, { id: "JPYINR=X", label: "JPY/INR" },
+            ],
+            indian_etf: [
+                { id: "NIFTYBEES.NS", label: "Nippon Nifty BeES" }, { id: "BANKBEES.NS", label: "Nippon Bank BeES" },
+                { id: "GOLDBEES.NS", label: "Nippon Gold BeES" }, { id: "SILVERBEES.NS", label: "Silver ETF" },
+                { id: "LIQUIDBEES.NS", label: "Liquid BeES" }, { id: "ITBEES.NS", label: "IT ETF" },
+                { id: "CPSEETF.NS", label: "CPSE ETF" }, { id: "NASDAQ100.NS", label: "Nasdaq 100 ETF" },
+            ],
+            indian_mf: [
+                { id: "120503", label: "SBI Bluechip Fund" }, { id: "100091", label: "HDFC Flexi Cap Fund" },
+                { id: "101850", label: "Parag Parikh Flexi Cap" }, { id: "100504", label: "HDFC Mid-Cap Opp" },
+                { id: "125354", label: "SBI Small Cap Fund" }, { id: "112090", label: "Nippon Small Cap" },
+                { id: "120684", label: "UTI Nifty Index Fund" }, { id: "100123", label: "HDFC Balanced Adv" },
+            ],
+            indian_reit: [
+                { id: "EMBASSY.NS", label: "Embassy REIT" }, { id: "MINDSPACE.NS", label: "Mindspace REIT" },
+                { id: "BROOKREIT.NS", label: "Brookfield India REIT" },
+            ],
+            indian_invit: [
+                { id: "INDIGRID.NS", label: "IndiGrid InvIT" }, { id: "IRBINVIT.NS", label: "IRB InvIT" },
+                { id: "PGINVIT.NS", label: "PowerGrid InvIT" },
+            ],
+            indian_gsec: [
+                { id: "IN10Y", label: "India 10Y G-Sec" }, { id: "GSEC5Y", label: "India 5Y G-Sec" },
+            ],
+            sgx_nifty: [
+                { id: "SGX_NIFTY", label: "GIFT Nifty" },
+            ],
         };
 
+        // ==================================================================
+        // CHART STATE
+        // ==================================================================
+        let chartInstance = null;
+        let candleSeries = null;
+        let equitySeries = null;
+        let storedOhlcv = [];
+        let storedEquity = [];
+        let storedMarkers = [];
+        let currentTab = 'price';
+
+        function createChart() {
+            const container = document.getElementById('candlestick-chart');
+            container.innerHTML = '';
+
+            chartInstance = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: container.clientHeight || 400,
+                layout: {
+                    background: { type: 'solid', color: '#0B0E14' },
+                    textColor: '#94A3B8',
+                    fontSize: 12,
+                    fontFamily: 'JetBrains Mono, monospace',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255,255,255,0.04)' },
+                    horzLines: { color: 'rgba(255,255,255,0.04)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: { color: 'rgba(59,130,246,0.4)', width: 1, style: 2 },
+                    horzLine: { color: 'rgba(59,130,246,0.4)', width: 1, style: 2 },
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255,255,255,0.1)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    timeVisible: false,
+                },
+                handleScroll: { vertTouchDrag: false },
+            });
+
+            // Resize on window resize
+            const ro = new ResizeObserver(() => {
+                chartInstance.applyOptions({ width: container.clientWidth, height: container.clientHeight || 400 });
+            });
+            ro.observe(container);
+        }
+
+        function renderPriceChart() {
+            if (!chartInstance) createChart();
+            // Remove old series
+            if (candleSeries) { try { chartInstance.removeSeries(candleSeries); } catch(e){} }
+            if (equitySeries) { try { chartInstance.removeSeries(equitySeries); } catch(e){} }
+            candleSeries = null;
+            equitySeries = null;
+
+            candleSeries = chartInstance.addCandlestickSeries({
+                upColor: '#10B981',
+                downColor: '#EF4444',
+                borderDownColor: '#EF4444',
+                borderUpColor: '#10B981',
+                wickDownColor: '#EF4444',
+                wickUpColor: '#10B981',
+            });
+            candleSeries.setData(storedOhlcv);
+
+            // Add buy/sell markers
+            if (storedMarkers.length > 0) {
+                candleSeries.setMarkers(storedMarkers.sort((a,b) => a.time < b.time ? -1 : 1));
+            }
+
+            chartInstance.timeScale().fitContent();
+        }
+
+        function renderEquityChart() {
+            if (!chartInstance) createChart();
+            if (candleSeries) { try { chartInstance.removeSeries(candleSeries); } catch(e){} }
+            if (equitySeries) { try { chartInstance.removeSeries(equitySeries); } catch(e){} }
+            candleSeries = null;
+            equitySeries = null;
+
+            equitySeries = chartInstance.addAreaSeries({
+                topColor: 'rgba(59, 130, 246, 0.4)',
+                bottomColor: 'rgba(59, 130, 246, 0.02)',
+                lineColor: '#3B82F6',
+                lineWidth: 2,
+            });
+            equitySeries.setData(storedEquity);
+            chartInstance.timeScale().fitContent();
+        }
+
+        function switchChart(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.chart-tab[data-tab="${tab}"]`).classList.add('active');
+
+            if (tab === 'price') {
+                document.getElementById('chart-title').textContent = 'Price Chart (Candlestick)';
+                renderPriceChart();
+            } else {
+                document.getElementById('chart-title').textContent = 'Portfolio Equity Curve';
+                renderEquityChart();
+            }
+        }
+
+        // ==================================================================
+        // UI LOGIC
+        // ==================================================================
         const typeSelect = document.getElementById("instrument-type");
         const tickerSelect = document.getElementById("ticker");
+        const strategySelect = document.getElementById("strategy");
+        const intervalSelect = document.getElementById("interval");
 
         function updateTickers() {
-            const selectedType = typeSelect.value;
-            const options = instrumentMap[selectedType] || [];
-            
+            const options = instrumentMap[typeSelect.value] || [];
             tickerSelect.innerHTML = "";
             options.forEach(opt => {
                 const el = document.createElement("option");
@@ -183,75 +493,88 @@
             });
         }
 
-        typeSelect.addEventListener("change", updateTickers);
-        updateTickers(); // Initialize on load
+        // Auto-switch interval when intraday strategy is selected
+        strategySelect.addEventListener("change", () => {
+            const opt = strategySelect.selectedOptions[0];
+            if (opt && opt.dataset.intraday === "true") {
+                intervalSelect.value = "15m";
+            }
+        });
 
+        typeSelect.addEventListener("change", updateTickers);
+        updateTickers();
+
+        // ==================================================================
+        // FORM SUBMIT
+        // ==================================================================
         document.getElementById('backtest-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const btn = document.getElementById('run-btn');
             const spinner = document.getElementById('spinner');
             btn.disabled = true;
             spinner.style.display = 'block';
 
             const payload = {
-                strategy: document.getElementById('strategy').value,
-                ticker: document.getElementById('ticker').value,
-                interval: document.getElementById('interval').value,
+                strategy: strategySelect.value,
+                ticker: tickerSelect.value,
+                instrument_type: typeSelect.value,
+                interval: intervalSelect.value,
                 from_date: document.getElementById('from_date').value,
                 to_date: document.getElementById('to_date').value,
                 initial_capital: parseFloat(document.getElementById('initial_capital').value)
             };
 
             try {
-                // Execute Engine
                 const res = await fetch('/api/backtest', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 });
-                
+
                 const data = await res.json();
-                
-                if (data.error) {
-                    alert('Runtime Error: ' + data.error);
-                    return;
-                }
+                if (data.error) { alert('Error: ' + data.error); return; }
 
                 const m = data.metrics;
 
-                // Bind UI Strings
+                // Show results
                 document.getElementById('welcome-state').style.display = 'none';
                 document.getElementById('results-state').style.display = 'block';
 
+                // KPIs
                 document.getElementById('m-tot-ret').textContent = (m.tot_ret >= 0 ? '+' : '') + m.tot_ret + '%';
                 document.getElementById('m-tot-ret').className = m.tot_ret >= 0 ? 'green' : 'red';
-                
                 document.getElementById('m-cagr').textContent = m.cagr + '%';
                 document.getElementById('m-sharpe').textContent = m.sharpe;
                 document.getElementById('m-win-rate').textContent = m.win_rate + '%';
                 document.getElementById('m-profit-factor').textContent = m.profit_factor;
-                
+
+                // Detail metrics
+                document.getElementById('m-instrument').textContent = (m.instrument_type || '').replace(/_/g, ' ').toUpperCase();
                 document.getElementById('m-sortino').textContent = m.sortino;
                 document.getElementById('m-calmar').textContent = m.calmar;
                 document.getElementById('m-max-dd').textContent = m.max_dd + '%';
                 document.getElementById('m-trades').textContent = m.num_trades;
                 document.getElementById('m-ls').textContent = `${m.longs} L / ${m.shorts} S`;
                 document.getElementById('m-awl').textContent = m.avg_win_loss;
-                document.getElementById('m-deg').textContent = `${m.deg_ratio}` + (m.deg_ratio > 0.7 ? " (Pass)" : " (Fail)");
+                document.getElementById('m-deg').textContent = `${m.deg_ratio}` + (m.deg_ratio > 0.7 ? ' (Pass)' : ' (Fail)');
                 document.getElementById('m-deg').className = m.deg_ratio > 0.7 ? 'green-text' : 'red-text';
-                
-                document.getElementById('m-costs').textContent = '₹' + m.total_costs.toLocaleString();
-                document.getElementById('m-exp').textContent = '₹' + m.expectancy.toLocaleString();
+                document.getElementById('m-costs').textContent = '\u20B9' + m.total_costs.toLocaleString('en-IN');
+                document.getElementById('m-exp').textContent = '\u20B9' + m.expectancy.toLocaleString('en-IN');
                 document.getElementById('m-exp').className = m.expectancy > 0 ? 'green' : 'red';
-
                 document.getElementById('run-id-badge').textContent = 'RUN-ID: ' + m.run_id;
-                
-                // Bust cache trick for image rendering immediately out of the local path
-                document.getElementById('equity-chart').src = data.chart_url + '?t=' + new Date().getTime();
+
+                // Store chart data
+                storedOhlcv = data.ohlcv || [];
+                storedMarkers = data.markers || [];
+                storedEquity = data.equity || [];
+
+                // Render active chart
+                createChart();
+                switchChart(currentTab);
 
             } catch (err) {
-                alert('Connection Fatal: ' + err.message);
+                alert('Connection Error: ' + err.message);
             } finally {
                 btn.disabled = false;
                 spinner.style.display = 'none';
