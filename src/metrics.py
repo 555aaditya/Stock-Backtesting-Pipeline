@@ -66,3 +66,174 @@ def sharpe_ratio(values: List[float], annual_risk_free_rate: float = 0.04) -> fl
         
     daily_sharpe = (mean_return - daily_rf) / std_dev
     return daily_sharpe * math.sqrt(252)
+
+# ============================================================================
+# EXPANDED METRICS
+# ============================================================================
+
+def sortino_ratio(returns: List[float], risk_free_rate: float = 0.065, target: float = 0.0) -> float:
+    """
+    Like Sharpe but only penalises downside volatility.
+    Sortino = (Mean Return - Risk Free) / Downside Deviation
+    """
+    if not returns: 
+        return 0.0
+    mean_return = sum(returns) / len(returns)
+    
+    downside_returns = [r - target for r in returns if r < target]
+    if not downside_returns:
+        return float('inf')  # No downside volatility!
+        
+    downside_variance = sum(r**2 for r in downside_returns) / len(returns)
+    downside_dev = math.sqrt(downside_variance)
+    
+    daily_rf = risk_free_rate / 252.0
+    
+    if downside_dev == 0:
+        return 0.0
+        
+    daily_sortino = (mean_return - daily_rf) / downside_dev
+    return daily_sortino * math.sqrt(252)
+
+def calmar_ratio(returns: List[float], max_drawdown_val: float) -> float:
+    """Calmar = Annualised Return / |Max Drawdown|"""
+    if max_drawdown_val == 0 or not returns:
+        return 0.0
+    
+    mean_daily_return = sum(returns) / len(returns)
+    annualized_return = mean_daily_return * 252.0
+    
+    return annualized_return / abs(max_drawdown_val)
+
+def win_rate(trades: List[dict]) -> float:
+    """% of trades with positive P&L after all costs"""
+    if not trades: 
+        return 0.0
+    wins = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) > 0]
+    return len(wins) / len(trades)
+
+def average_win_loss_ratio(trades: List[dict]) -> float:
+    """avg_win / avg_loss — must be > 1/(win_rate) to be profitable"""
+    if not trades: 
+        return 0.0
+    
+    wins = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) > 0]
+    losses = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) <= 0]
+    
+    avg_win = (sum(w.get('pnl', w) if isinstance(w, dict) else w for w in wins) / len(wins)) if wins else 0.0
+    avg_loss = (sum(abs(l.get('pnl', l) if isinstance(l, dict) else l) for l in losses) / len(losses)) if losses else 0.0
+    
+    if avg_loss == 0.0:
+        return float('inf')
+    return avg_win / avg_loss
+
+def profit_factor(trades: List[dict]) -> float:
+    """Gross profit / Gross loss — target > 1.5"""
+    if not trades: 
+        return 0.0
+    
+    gross_profit = sum(t.get('pnl', t) if isinstance(t, dict) else t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) > 0)
+    gross_loss = sum(abs(t.get('pnl', t) if isinstance(t, dict) else t) for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) < 0)
+    
+    if gross_loss == 0.0:
+        return float('inf')
+    return gross_profit / gross_loss
+
+def max_consecutive_losses(trades: List[dict]) -> int:
+    """Longest losing streak — psychological and risk management metric"""
+    max_streak = 0
+    current_streak = 0
+    for t in trades:
+        val = t.get('pnl', t) if isinstance(t, dict) else t
+        if val <= 0:
+            current_streak += 1
+            if current_streak > max_streak:
+                max_streak = current_streak
+        else:
+            current_streak = 0
+    return max_streak
+
+def trade_expectancy(trades: List[dict]) -> float:
+    """
+    Expected P&L per trade:
+    E = (Win Rate × Avg Win) - (Loss Rate × Avg Loss)
+    """
+    if not trades: 
+        return 0.0
+    wins = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) > 0]
+    losses = [t for t in trades if (t.get('pnl', t) if isinstance(t, dict) else t) <= 0]
+    
+    win_rt = len(wins) / len(trades)
+    loss_rt = len(losses) / len(trades)
+    
+    avg_win = (sum(w.get('pnl', w) if isinstance(w, dict) else w for w in wins) / len(wins)) if wins else 0.0
+    avg_loss = (sum(abs(l.get('pnl', l) if isinstance(l, dict) else l) for l in losses) / len(losses)) if losses else 0.0
+    
+    return (win_rt * avg_win) - (loss_rt * avg_loss)
+
+def rolling_sharpe(returns: List[float], window: int = 63, annual_rf: float = 0.065) -> List[tuple]:
+    """
+    63-day (quarterly) rolling Sharpe.
+    Returns list of (index/date, sharpe) tuples.
+    """
+    results = []
+    daily_rf = annual_rf / 252.0
+    
+    for i in range(len(returns)):
+        is_dict = isinstance(returns[i], dict)
+        date_key = returns[i].get("date") if is_dict else i
+        
+        if i < window - 1:
+            results.append((date_key, None))
+            continue
+             
+        w = returns[i - window + 1: i + 1]
+        vals = [x.get("return", x.get("value", 0)) if isinstance(x, dict) else x for x in w]
+        
+        mean = sum(vals) / window
+        var = sum((x - mean)**2 for x in vals) / window
+        std = math.sqrt(var)
+        
+        if std == 0:
+            sh = 0.0
+        else:
+            sh = ((mean - daily_rf) / std) * math.sqrt(252)
+            
+        results.append((date_key, sh))
+             
+    return results
+
+def underwater_curve(equity_curve: List[float]) -> List[float]:
+    """
+    % drawdown at each point in time. 
+    Shows how long strategy spends in drawdown.
+    """
+    if not equity_curve: 
+        return []
+    
+    drawdowns = []
+    peak = equity_curve[0] if not isinstance(equity_curve[0], dict) else equity_curve[0].get("value", 0)
+    
+    for item in equity_curve:
+        val = item if not isinstance(item, dict) else item.get("value", 0)
+        
+        if val > peak:
+            peak = val
+            
+        if peak == 0:
+            drawdowns.append(0.0)
+        else:
+            dd = (peak - val) / peak
+            drawdowns.append(dd * 100.0) # Percentage
+            
+    return drawdowns
+
+def kelly_fraction(win_rate: float, avg_win: float, avg_loss: float) -> float:
+    """Optimal fraction of capital to risk per trade"""
+    if avg_loss == 0:
+        return 0.0
+    b = avg_win / avg_loss
+    if b == 0:
+        return 0.0
+    f = (b * win_rate - (1.0 - win_rate)) / b
+    return max(0.0, f)

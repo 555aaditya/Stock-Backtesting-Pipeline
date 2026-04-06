@@ -1,3 +1,5 @@
 requests
 matplotlib
 pytest
+yfinance
+flask

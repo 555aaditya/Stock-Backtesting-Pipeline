@@ -1,4 +1,6 @@
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime
@@ -14,8 +16,8 @@ def plot_equity_curve(portfolio: List[Dict], ticker: str, strategy: str, metrics
     """Plots the equity curve and saves it to a PNG."""
     os.makedirs(output_dir, exist_ok=True)
     
-    dates = [datetime.strptime(row["date"], "%Y-%m-%d") for row in portfolio]
-    values = [row["value"] for row in portfolio]
+    dates = [datetime.strptime(row.get("date", "2000-01-01")[:10], "%Y-%m-%d") for row in portfolio]
+    values = [row.get("value", 0) for row in portfolio]
     
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(dates, values, label="Portfolio Value", color="#1f77b4", linewidth=1.5)
@@ -49,9 +51,9 @@ def plot_signals(portfolio: List[Dict], ticker: str, strategy: str, output_dir: 
     """Plots the price with buy signals overlaid as green triangles."""
     os.makedirs(output_dir, exist_ok=True)
     
-    dates = [datetime.strptime(row["date"], "%Y-%m-%d") for row in portfolio]
-    prices = [row["price"] for row in portfolio]
-    signals = [row["signal"] for row in portfolio]
+    dates = [datetime.strptime(row.get("date", "2000-01-01")[:10], "%Y-%m-%d") for row in portfolio]
+    prices = [row.get("price", 0) for row in portfolio]
+    signals = [row.get("signal", 0) for row in portfolio]
     
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(dates, prices, label="Close Price", color="#444444", linewidth=1.2, alpha=0.8)

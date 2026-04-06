@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSE Quant Engine Terminal</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Parametric Input -->
+        <aside class="glass-orb controls-container">
+            <div class="brand">
+                <div class="brand-dot"></div>
+                <h2>Quantum Backtester</h2>
+            </div>
+            
+            <form id="backtest-form" class="controls-form">
+                <div class="input-group">
+                    <label>Strategy Engine</label>
+                    <select name="strategy" id="strategy">
+                        <option value="orb">Opening Range Breakout</option>
+                        <option value="straddle">BankNifty Straddle</option>
+                        <option value="vwap_mean_reversion">VWAP Mean Reversion</option>
+                        <option value="bollinger_mean_reversion">Bollinger Bands</option>
+                        <option value="sma_crossover">SMA Crossover</option>
+                        <option value="rsi_divergence">RSI Divergence</option>
+                        <option value="donchian_breakout">Donchian Breakout</option>
+                        <option value="gap_fill">Overnight Gap Fill</option>
+                    </select>
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Instrument Type</label>
+                        <select id="instrument-type">
+                            <option value="stocks">Stocks (NSE)</option>
+                            <option value="indices">Indices (NSE)</option>
+                            <option value="derivatives">Derivatives (NSE/BSE)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Specific Asset</label>
+                        <select name="ticker" id="ticker">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Interval</label>
+                        <select name="interval" id="interval">
+                            <option value="15m">15 Min Intraday</option>
+                            <option value="5m">5 Min Intraday</option>
+                            <option value="1d">Daily Delivery</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>From Date</label>
+                        <input type="date" name="from_date" id="from_date" value="2023-01-01">
+                    </div>
+                    <div class="input-group">
+                        <label>To Date</label>
+                        <input type="date" name="to_date" id="to_date" value="2024-01-01">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Initial Capital (₹)</label>
+                    <input type="number" name="initial_capital" id="initial_capital" value="100000" step="10000">
+                </div>
+
+                <button type="submit" class="btn-run" id="run-btn">
+                    Execute Simulation
+                    <div class="spinner" id="spinner" style="display:none;"></div>
+                </button>
+            </form>
+        </aside>
+
+        <!-- Main Display Analytics -->
+        <main class="analytics-container">
+            <div id="welcome-state" class="welcome-state glass-orb">
+                <h3>System Ready</h3>
+                <p>Awaiting simulation parameters to generate trade metrics and trajectory bounds.</p>
+            </div>
+
+            <div id="results-state" class="results-state" style="display: none;">
+                <!-- Key Metrics Scroller -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass-orb">
+                        <span class="label">Total Return</span>
+                        <h3 id="m-tot-ret" class="green">+0.0%</h3>
+                    </div>
+                    <div class="kpi-card glass-orb">
+                        <span class="label">CAGR</span>
+                        <h3 id="m-cagr">0.0%</h3>
+                    </div>
+                    <div class="kpi-card glass-orb">
+                        <span class="label">Sharpe Ratio</span>
+                        <h3 id="m-sharpe">0.00</h3>
+                    </div>
+                    <div class="kpi-card glass-orb">
+                        <span class="label">Win Rate</span>
+                        <h3 id="m-win-rate">0.0%</h3>
+                    </div>
+                    <div class="kpi-card glass-orb">
+                        <span class="label">Profit Factor</span>
+                        <h3 id="m-profit-factor">0.00</h3>
+                    </div>
+                </div>
+
+                <!-- Deep Analytics Table & Chart -->
+                <div class="detailed-analytics">
+                    <div class="chart-container glass-orb">
+                        <div class="header-row">
+                            <h4>Portfolio Equity Trajectory</h4>
+                            <span id="run-id-badge" class="badge">Run-ID: NULL</span>
+                        </div>
+                        <img id="equity-chart" src="" alt="Equity Curve">
+                    </div>
+                    
+                    <div class="metrics-list glass-orb list-view">
+                        <h4>Terminal Analytics</h4>
+                        <div class="meta-row"><span>Sortino Ratio</span> <strong id="m-sortino">-</strong></div>
+                        <div class="meta-row"><span>Calmar Ratio</span> <strong id="m-calmar">-</strong></div>
+                        <div class="meta-row"><span>Max Drawdown</span> <strong id="m-max-dd" class="red">-</strong></div>
+                        <div class="meta-row"><span>Total Trades</span> <strong id="m-trades">-</strong></div>
+                        <div class="meta-row"><span>Long / Short</span> <strong id="m-ls">-</strong></div>
+                        <div class="meta-row"><span>Avg Win/Loss</span> <strong id="m-awl">-</strong></div>
+                        <div class="meta-row"><span>Walk-Forward Degradation</span> <strong id="m-deg">-</strong></div>
+                        <hr>
+                        <div class="meta-row total-row"><span>Execution Costs</span> <strong id="m-costs" class="red">₹-</strong></div>
+                        <div class="meta-row total-row highlighter"><span>Trade Expectancy</span> <strong id="m-exp" class="green">₹-</strong></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const instrumentMap = {
+            stocks: [
+                { id: "RELIANCE.NS", label: "Reliance Industries" },
+                { id: "TCS.NS", label: "Tata Consultancy Services" },
+                { id: "HDFCBANK.NS", label: "HDFC Bank" },
+                { id: "ICICIBANK.NS", label: "ICICI Bank" },
+                { id: "INFY.NS", label: "Infosys" },
+                { id: "ITC.NS", label: "ITC Ltd" },
+                { id: "SBIN.NS", label: "State Bank of India" },
+                { id: "BHARTIARTL.NS", label: "Bharti Airtel" },
+                { id: "LARSEN.NS", label: "Larsen & Toubro" },
+                { id: "BAJFINANCE.NS", label: "Bajaj Finance" }
+            ],
+            indices: [
+                { id: "^NSEI", label: "NIFTY 50" },
+                { id: "^NSEBANK", label: "NIFTY Bank" },
+                { id: "^CNXIT", label: "NIFTY IT" },
+                { id: "^CNXAUTO", label: "NIFTY Auto" },
+                { id: "^CNXFMCG", label: "NIFTY FMCG" }
+            ],
+            derivatives: [
+                { id: "NIFTY_FUT", label: "Nifty Futures (Synthesized)" },
+                { id: "BANKNIFTY_FUT", label: "Bank Nifty Futures (Synthesized)" },
+                { id: "RELIANCE_FUT", label: "Reliance Futures" }
+            ]
+        };
+
+        const typeSelect = document.getElementById("instrument-type");
+        const tickerSelect = document.getElementById("ticker");
+
+        function updateTickers() {
+            const selectedType = typeSelect.value;
+            const options = instrumentMap[selectedType] || [];
+            
+            tickerSelect.innerHTML = "";
+            options.forEach(opt => {
+                const el = document.createElement("option");
+                el.value = opt.id;
+                el.textContent = `${opt.label} (${opt.id})`;
+                tickerSelect.appendChild(el);
+            });
+        }
+
+        typeSelect.addEventListener("change", updateTickers);
+        updateTickers(); // Initialize on load
+
+        document.getElementById('backtest-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('run-btn');
+            const spinner = document.getElementById('spinner');
+            btn.disabled = true;
+            spinner.style.display = 'block';
+
+            const payload = {
+                strategy: document.getElementById('strategy').value,
+                ticker: document.getElementById('ticker').value,
+                interval: document.getElementById('interval').value,
+                from_date: document.getElementById('from_date').value,
+                to_date: document.getElementById('to_date').value,
+                initial_capital: parseFloat(document.getElementById('initial_capital').value)
+            };
+
+            try {
+                // Execute Engine
+                const res = await fetch('/api/backtest', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                
+                if (data.error) {
+                    alert('Runtime Error: ' + data.error);
+                    return;
+                }
+
+                const m = data.metrics;
+
+                // Bind UI Strings
+                document.getElementById('welcome-state').style.display = 'none';
+                document.getElementById('results-state').style.display = 'block';
+
+                document.getElementById('m-tot-ret').textContent = (m.tot_ret >= 0 ? '+' : '') + m.tot_ret + '%';
+                document.getElementById('m-tot-ret').className = m.tot_ret >= 0 ? 'green' : 'red';
+                
+                document.getElementById('m-cagr').textContent = m.cagr + '%';
+                document.getElementById('m-sharpe').textContent = m.sharpe;
+                document.getElementById('m-win-rate').textContent = m.win_rate + '%';
+                document.getElementById('m-profit-factor').textContent = m.profit_factor;
+                
+                document.getElementById('m-sortino').textContent = m.sortino;
+                document.getElementById('m-calmar').textContent = m.calmar;
+                document.getElementById('m-max-dd').textContent = m.max_dd + '%';
+                document.getElementById('m-trades').textContent = m.num_trades;
+                document.getElementById('m-ls').textContent = `${m.longs} L / ${m.shorts} S`;
+                document.getElementById('m-awl').textContent = m.avg_win_loss;
+                document.getElementById('m-deg').textContent = `${m.deg_ratio}` + (m.deg_ratio > 0.7 ? " (Pass)" : " (Fail)");
+                document.getElementById('m-deg').className = m.deg_ratio > 0.7 ? 'green-text' : 'red-text';
+                
+                document.getElementById('m-costs').textContent = '₹' + m.total_costs.toLocaleString();
+                document.getElementById('m-exp').textContent = '₹' + m.expectancy.toLocaleString();
+                document.getElementById('m-exp').className = m.expectancy > 0 ? 'green' : 'red';
+
+                document.getElementById('run-id-badge').textContent = 'RUN-ID: ' + m.run_id;
+                
+                // Bust cache trick for image rendering immediately out of the local path
+                document.getElementById('equity-chart').src = data.chart_url + '?t=' + new Date().getTime();
+
+            } catch (err) {
+                alert('Connection Fatal: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

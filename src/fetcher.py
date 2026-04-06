@@ -1,7 +1,10 @@
 import os
 import time
 import requests
-from datetime import datetime
+import zipfile
+import io
+import csv
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 
 
@@ -442,6 +445,101 @@ def fetch_ohlcv(
     """
     fetcher = YahooFinanceFetcher()
     return fetcher.fetch(ticker, start_date, end_date)
+
+# ============================================================================
+# NSE & YFINANCE HELPERS
+# ============================================================================
+
+def fetch_nse_eod(symbol: str, from_date: str, to_date: str) -> List[Dict]:
+    """
+    Source: NSE India bhavcopy CSV files
+    URL pattern: https://nsearchives.nseindia.com/content/historical/EQUITIES/{year}/{month}/cm{date}bhav.csv.zip
+    Parse zip -> extract CSV -> return list of OHLCV dicts
+    """
+    from_dt = datetime.strptime(from_date, "%Y-%m-%d")
+    to_dt = datetime.strptime(to_date, "%Y-%m-%d")
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    
+    session = requests.Session()
+    session.headers.update(headers)
+    
+    results = []
+    
+    current_dt = from_dt
+    while current_dt <= to_dt:
+        if current_dt.weekday() < 5:  # Monday to Friday
+            year = current_dt.strftime("%Y")
+            month = current_dt.strftime("%b").upper()
+            date_str = current_dt.strftime("%d%b%Y").upper()
+            
+            url = f"https://nsearchives.nseindia.com/content/historical/EQUITIES/{year}/{month}/cm{date_str}bhav.csv.zip"
+            try:
+                response = session.get(url, timeout=10)
+                if response.status_code == 200:
+                    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+                        filename = z.namelist()[0]
+                        with z.open(filename) as f:
+                            csv_data = f.read().decode('utf-8')
+                            reader = csv.DictReader(io.StringIO(csv_data))
+                            for row in reader:
+                                if row.get("SYMBOL") == symbol and row.get("SERIES") == "EQ":
+                                    ohlcv = {
+                                        "date": current_dt.strftime("%Y-%m-%d"),
+                                        "open": float(row.get("OPEN", 0.0)),
+                                        "high": float(row.get("HIGH", 0.0)),
+                                        "low": float(row.get("LOW", 0.0)),
+                                        "close": float(row.get("CLOSE", 0.0)),
+                                        "volume": int(row.get("TOTTRDQTY", 0))
+                                    }
+                                    results.append(ohlcv)
+                                    break
+            except Exception:
+                # Silently skip days on failure (holidays, network issues, 404s)
+                pass
+            time.sleep(0.5)  # respectful delay
+        current_dt += timedelta(days=1)
+        
+    return results
+
+def fetch_yfinance_nse(symbol: str, from_date: str, to_date: str) -> List[Dict]:
+    """
+    Use Yahoo Finance with ".NS" suffix for NSE stocks
+    Example: "RELIANCE.NS", "HDFCBANK.NS", "TCS.NS"
+    Fallback when NSE direct fails
+    """
+    y_symbol = f"{symbol}.NS"
+    fetcher = YahooFinanceFetcher()
+    return fetcher.fetch(y_symbol, from_date, to_date)
+
+def fetch_intraday_nse(symbol: str, interval: str) -> List[Dict]:
+    """
+    intervals: "1m", "5m", "15m", "30m", "60m"
+    Source: Yahoo Finance intraday (yfinance library)
+    Returns list of {timestamp, open, high, low, close, volume}
+    """
+    import yfinance as yf
+    
+    y_symbol = f"{symbol}.NS"
+    # yfinance max periods for intraday data
+    period = "7d" if interval == "1m" else "60d"
+    
+    ticker = yf.Ticker(y_symbol)
+    df = ticker.history(period=period, interval=interval)
+    
+    results = []
+    for index, row in df.iterrows():
+        results.append({
+            "timestamp": index.strftime("%Y-%m-%d %H:%M:%S"),
+            "open": float(row["Open"]),
+            "high": float(row["High"]),
+            "low": float(row["Low"]),
+            "close": float(row["Close"]),
+            "volume": int(row["Volume"])
+        })
+    return results
 
 
 # ============================================================================
