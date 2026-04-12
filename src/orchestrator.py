@@ -137,14 +137,18 @@ def run_orchestrator(config: Dict[str, Any]) -> Dict[str, Any]:
     sortino = metrics_lib.sortino_ratio(returns)
     calmar = metrics_lib.calmar_ratio(returns, max_dd)
 
-    w_rate = metrics_lib.win_rate(trade_log)
-    p_factor = metrics_lib.profit_factor(trade_log)
-    avg_wl = metrics_lib.average_win_loss_ratio(trade_log)
-    expectancy = metrics_lib.trade_expectancy(trade_log)
+    # Only closed trades (exits) have P&L — filter for metrics
+    closed_trades = [t for t in trade_log if "EXIT" in t.get("type", "")]
+    w_rate = metrics_lib.win_rate(closed_trades)
+    p_factor = metrics_lib.profit_factor(closed_trades)
+    avg_wl = metrics_lib.average_win_loss_ratio(closed_trades)
+    expectancy = metrics_lib.trade_expectancy(closed_trades)
 
     total_tx_costs = sum(t.get("costs", 0) for t in trade_log)
-    longs = sum(1 for t in trade_log if "LONG" in t.get("type", "") or t.get("qty", 0) > 0)
-    shorts = len(trade_log) - longs
+    enter_longs = sum(1 for t in trade_log if "ENTER_LONG" in t.get("type", ""))
+    enter_shorts = sum(1 for t in trade_log if "ENTER_SHORT" in t.get("type", ""))
+    longs = enter_longs
+    shorts = enter_shorts
 
     metrics = {
         "run_id": run_id,
@@ -154,7 +158,7 @@ def run_orchestrator(config: Dict[str, Any]) -> Dict[str, Any]:
         "interval": interval,
         "from_date": from_date,
         "to_date": to_date,
-        "num_trades": len(trade_log),
+        "num_trades": len(closed_trades),
         "longs": longs,
         "shorts": shorts,
         "tot_ret": round(tot_ret, 2),

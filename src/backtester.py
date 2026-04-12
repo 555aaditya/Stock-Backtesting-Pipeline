@@ -102,15 +102,18 @@ def run_backtest(rows: List[Dict], signals: List[Dict], config: Dict = None) -> 
                 costs = cost_model.calculate_equity_intraday(entry_price, current_price, qty)
             else:
                 costs = cost_model.calculate_equity_delivery(entry_price, current_price, qty)
-            
+
+            gross_pnl = qty * (current_price - entry_price)
+            net_pnl = gross_pnl - costs["total_costs"]
             cash += (qty * current_price) - costs["total_costs"]
             trade_log.append({
-                "type": "EXIT_LONG", "price": current_price, "qty": qty, 
-                "time": current_date_time, "reason": exit_reason or "SIGNAL", 
-                "costs": costs["total_costs"]
+                "type": "EXIT_LONG", "price": current_price, "qty": qty,
+                "time": current_date_time, "reason": exit_reason or "SIGNAL",
+                "costs": costs["total_costs"], "pnl": round(net_pnl, 2),
+                "entry_price": entry_price
             })
             position = 0.0
-            
+
         elif position < 0 and signal_val >= 0:
             # Buy to cover short position
             qty = abs(position)
@@ -118,12 +121,15 @@ def run_backtest(rows: List[Dict], signals: List[Dict], config: Dict = None) -> 
                 costs = cost_model.calculate_equity_intraday(current_price, entry_price, qty)
             else:
                 costs = cost_model.calculate_equity_delivery(current_price, entry_price, qty)
-                
+
+            gross_pnl = qty * (entry_price - current_price)
+            net_pnl = gross_pnl - costs["total_costs"]
             cash -= (qty * current_price) + costs["total_costs"]
             trade_log.append({
-                "type": "EXIT_SHORT", "price": current_price, "qty": qty, 
-                "time": current_date_time, "reason": exit_reason or "SIGNAL", 
-                "costs": costs["total_costs"]
+                "type": "EXIT_SHORT", "price": current_price, "qty": qty,
+                "time": current_date_time, "reason": exit_reason or "SIGNAL",
+                "costs": costs["total_costs"], "pnl": round(net_pnl, 2),
+                "entry_price": entry_price
             })
             position = 0.0
             

@@ -71,39 +71,47 @@ def sharpe_ratio(values: List[float], annual_risk_free_rate: float = 0.04) -> fl
 # EXPANDED METRICS
 # ============================================================================
 
-def sortino_ratio(returns: List[float], risk_free_rate: float = 0.065, target: float = 0.0) -> float:
+def sortino_ratio(values: List[float], risk_free_rate: float = 0.07, target: float = 0.0) -> float:
     """
     Like Sharpe but only penalises downside volatility.
+    Accepts portfolio values (same as sharpe_ratio), converts to daily returns internally.
     Sortino = (Mean Return - Risk Free) / Downside Deviation
     """
-    if not returns: 
+    if len(values) < 2:
         return 0.0
-    mean_return = sum(returns) / len(returns)
-    
-    downside_returns = [r - target for r in returns if r < target]
-    if not downside_returns:
-        return float('inf')  # No downside volatility!
-        
-    downside_variance = sum(r**2 for r in downside_returns) / len(returns)
-    downside_dev = math.sqrt(downside_variance)
-    
+
+    daily_returns = []
+    for i in range(1, len(values)):
+        prev = values[i - 1]
+        curr = values[i]
+        daily_returns.append((curr - prev) / prev if prev != 0 else 0)
+
     daily_rf = risk_free_rate / 252.0
-    
+    mean_return = sum(daily_returns) / len(daily_returns)
+
+    downside_returns = [r - daily_rf for r in daily_returns if r < daily_rf]
+    if not downside_returns:
+        return float('inf')
+
+    downside_variance = sum(r**2 for r in downside_returns) / len(daily_returns)
+    downside_dev = math.sqrt(downside_variance)
+
     if downside_dev == 0:
         return 0.0
-        
+
     daily_sortino = (mean_return - daily_rf) / downside_dev
     return daily_sortino * math.sqrt(252)
 
-def calmar_ratio(returns: List[float], max_drawdown_val: float) -> float:
-    """Calmar = Annualised Return / |Max Drawdown|"""
-    if max_drawdown_val == 0 or not returns:
+def calmar_ratio(values: List[float], max_drawdown_pct: float) -> float:
+    """
+    Calmar = CAGR / |Max Drawdown|
+    Accepts portfolio values and max drawdown as a percentage.
+    """
+    if max_drawdown_pct == 0 or len(values) < 2:
         return 0.0
-    
-    mean_daily_return = sum(returns) / len(returns)
-    annualized_return = mean_daily_return * 252.0
-    
-    return annualized_return / abs(max_drawdown_val)
+
+    cagr_val = cagr(values)
+    return cagr_val / abs(max_drawdown_pct)
 
 def win_rate(trades: List[dict]) -> float:
     """% of trades with positive P&L after all costs"""

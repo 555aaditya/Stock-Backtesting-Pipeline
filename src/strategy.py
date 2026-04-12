@@ -373,7 +373,7 @@ def rsi_divergence(ohlcv: List[Dict], config: Dict) -> List[Dict]:
         if i >= lookback and rsi_vals[i] is not None:
              w_c = closes[i-lookback:i+1]
              w_r = rsi_vals[i-lookback:i+1]
-             
+
              c_minima = []
              c_maxima = []
              for j in range(1, len(w_c)-1):
@@ -381,16 +381,18 @@ def rsi_divergence(ohlcv: List[Dict], config: Dict) -> List[Dict]:
                      c_minima.append(j)
                  if w_c[j] > w_c[j-1] and w_c[j] > w_c[j+1]:
                      c_maxima.append(j)
-                     
+
              if len(c_minima) >= 2:
                  idx1, idx2 = c_minima[-2], c_minima[-1]
-                 if w_c[idx2] < w_c[idx1] and w_r[idx2] > w_r[idx1]:
-                     current_signal = 1
-             
+                 if w_r[idx1] is not None and w_r[idx2] is not None:
+                     if w_c[idx2] < w_c[idx1] and w_r[idx2] > w_r[idx1]:
+                         current_signal = 1
+
              if len(c_maxima) >= 2:
                  idx1, idx2 = c_maxima[-2], c_maxima[-1]
-                 if w_c[idx2] > w_c[idx1] and w_r[idx2] < w_r[idx1]:
-                     current_signal = -1
+                 if w_r[idx1] is not None and w_r[idx2] is not None:
+                     if w_c[idx2] > w_c[idx1] and w_r[idx2] < w_r[idx1]:
+                         current_signal = -1
                      
         signals.append({"date": date_time, "signal": current_signal, "price": c, "reason": "RSI_DIV"})
     return signals

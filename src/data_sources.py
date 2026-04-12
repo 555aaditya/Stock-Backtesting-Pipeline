@@ -89,11 +89,35 @@ class YahooFinanceSource:
         "https://query1.finance.yahoo.com/v8/finance/chart"
     )
 
+    # Yahoo Finance limits for intraday intervals
+    _MAX_RANGE = {
+        "1m": 7,
+        "2m": 60,
+        "5m": 60,
+        "15m": 60,
+        "30m": 60,
+        "60m": 730,
+        "1h": 730,
+        "1d": 36500,
+    }
+
     @staticmethod
     def fetch(ticker: str, start_date: str, end_date: str,
               interval: str = "1d", timeout: int = 10) -> List[Dict]:
         start_dt = datetime.strptime(start_date, "%Y-%m-%d")
         end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+
+        # Clamp end_date to today (Yahoo rejects future dates)
+        now = datetime.now()
+        if end_dt > now:
+            end_dt = now
+
+        # Enforce Yahoo's max range per interval
+        max_days = YahooFinanceSource._MAX_RANGE.get(interval, 36500)
+        earliest_allowed = end_dt - timedelta(days=max_days)
+        if start_dt < earliest_allowed:
+            start_dt = earliest_allowed
+
         period1 = int(start_dt.timestamp())
         period2 = int(end_dt.timestamp())
 

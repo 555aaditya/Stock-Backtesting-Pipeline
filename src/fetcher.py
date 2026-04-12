@@ -134,17 +134,22 @@ class YahooFinanceFetcher:
             raise ValueError(
                 f"Invalid date format. Use YYYY-MM-DD. Got: {start_date}, {end_date}"
             ) from e
-        
+
         # Validate: start should be before end
         if start_dt >= end_dt:
             raise ValueError(
                 f"start_date must be before end_date. Got start={start_date}, end={end_date}"
             )
-        
+
+        # Clamp end_date to now (Yahoo rejects future dates)
+        now = datetime.now()
+        if end_dt > now:
+            end_dt = now
+
         # Convert to Unix timestamps (seconds since epoch)
         period1 = int(start_dt.timestamp())
         period2 = int(end_dt.timestamp())
-        
+
         return period1, period2
     
     # =========================================================================

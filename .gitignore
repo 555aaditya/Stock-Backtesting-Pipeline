@@ -18,7 +18,7 @@ data/
 *.db
 *.sqlite
 *.sqlite3
-*.png
+static/charts/*.png
 
 # Test caches
 .pytest_cache/
@@ -26,3 +26,4 @@ data/
 # IDE configurations
 .vscode/
 .idea/
+CLAUDE.md
