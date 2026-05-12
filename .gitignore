@@ -27,3 +27,4 @@ static/charts/*.png
 .vscode/
 .idea/
 CLAUDE.md
+static/charts/*

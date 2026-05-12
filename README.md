@@ -27,11 +27,6 @@
 
 - **Walk-Forward Validation:** Prevents overfitting by testing strategies on truly unseen out-of-sample data with degradation analysis.
 
-<div align='center'>
-    <img src="static/charts/RELIANCE.NS_sma_crossover_4f43c2c5_equity.png" alt="Equity Curve" width="600" align="center">
-    <p align="center"><em>SMA Crossover Strategy — Equity Curve for RELIANCE.NS</em></p>
-</div>
-
 
 ### Tools and Technologies
 
@@ -137,8 +132,37 @@ The dashboard displays real-time KPI cards and a detailed terminal analytics pan
 *ITC had a strong uptrend from 2021–2024. The SMA crossover captured it with a 50% win rate, but winning trades were 5.37× larger than losers — demonstrating that win rate alone doesn't determine profitability.*
 
 <div align='center'>
-    <img src="images/ITC.png" alt="Dashboard Screenshot" width="800" align="center">
+    <img src="images/1.png" alt="ITC SMA Crossover dashboard screenshot" width="800" align="center">
     <p align="center"><em>ITC.NS — SMA Crossover Strategy (2021–2024) with KPI Cards, Candlestick Chart & Terminal Analytics</em></p>
+</div>
+
+### Dashboard Examples
+
+The screenshots below show the web dashboard running different strategy engines against Indian market instruments. Each run uses realistic transaction cost modelling and displays KPI cards, candlestick signals, and terminal analytics.
+
+<div align='center'>
+    <img src="images/1.png" alt="ITC SMA Crossover dashboard screenshot" width="800" align="center">
+    <p align="center"><em><strong>1. ITC.NS + SMA Crossover:</strong> Daily trend-following setup on a NIFTY 50 stock from 2021-01-01 to 2024-12-01. The strategy captured ITC's multi-year uptrend with selective long entries.</em></p>
+</div>
+
+<div align='center'>
+    <img src="images/2.png" alt="NIFTYBEES SMA Crossover dashboard screenshot" width="800" align="center">
+    <p align="center"><em><strong>2. NIFTYBEES.NS + SMA Crossover:</strong> Daily trend-following setup on the Nippon Nifty BeES ETF from 2021-01-01 to 2024-12-01. This demonstrates how a simple moving-average engine behaves on a broad-market ETF.</em></p>
+</div>
+
+<div align='center'>
+    <img src="images/3.png" alt="Bharti Airtel SMA Crossover dashboard screenshot" width="800" align="center">
+    <p align="center"><em><strong>3. BHARTIARTL.NS + SMA Crossover:</strong> Daily trend-following setup on Bharti Airtel from 2021-01-01 to 2024-12-01. The run highlights a strong momentum stock where fewer trend signals can still produce meaningful portfolio growth.</em></p>
+</div>
+
+<div align='center'>
+    <img src="images/4.png" alt="HDFC Bank Bollinger Bands dashboard screenshot" width="800" align="center">
+    <p align="center"><em><strong>4. HDFCBANK.NS + Bollinger Bands:</strong> Daily mean-reversion setup on HDFC Bank from 2021-01-01 to 2024-12-01. The strategy uses price deviations from Bollinger Bands to generate long and short reversal signals.</em></p>
+</div>
+
+<div align='center'>
+    <img src="images/5.png" alt="Bharti Airtel Donchian Breakout dashboard screenshot" width="800" align="center">
+    <p align="center"><em><strong>5. BHARTIARTL.NS + Donchian Breakout:</strong> Daily breakout setup on Bharti Airtel from 2021-01-01 to 2024-12-01. This run shows a channel-breakout engine attempting to participate in large directional moves.</em></p>
 </div>
 
 
@@ -236,11 +260,6 @@ python app.py
 ```
 Visit ```http://localhost:8080``` in your browser to open the interactive dashboard.
 
-<div align='center'>
-    <img src="static/charts/HDFCBANK.NS_bollinger_mean_reversion_5473f849_equity.png" alt="Bollinger Strategy" width="600" align="center">
-    <p align="center"><em>Bollinger Mean Reversion — HDFCBANK.NS Equity Curve</em></p>
-</div>
-
 #### Run via CLI (alternative)
 ```
 python run.py --ticker RELIANCE.NS --strategy sma_crossover --interval 1d --from 2023-01-01 --to 2024-01-01
@@ -259,26 +278,6 @@ python run.py --universe nifty50 --strategy cross_sectional_momentum --rebalance
 ```
 python -m pytest tests/ -v
 ```
-
-<div align='center'>
-    <img src="static/charts/BANKNIFTY_orb_346e6b53_equity.png" alt="ORB Strategy" width="600" align="center">
-    <p align="center"><em>Opening Range Breakout — BANKNIFTY Equity Curve</em></p>
-</div>
-
-<div align='center'>
-    <img src="static/charts/SBIN.NS_bollinger_mean_reversion_2a141c1d_equity.png" alt="SBIN Bollinger" width="600" align="center">
-    <p align="center"><em>Bollinger Mean Reversion — SBIN.NS Equity Curve</em></p>
-</div>
-
-<div align='center'>
-    <img src="static/charts/GOLD_sma_crossover_86f4313e_equity.png" alt="Gold SMA" width="600" align="center">
-    <p align="center"><em>SMA Crossover — Gold Commodity Equity Curve</em></p>
-</div>
-
-<div align='center'>
-    <img src="static/charts/USDINR=X_sma_crossover_aa9a2f23_equity.png" alt="USDINR Forex" width="600" align="center">
-    <p align="center"><em>SMA Crossover — USD/INR Forex Equity Curve</em></p>
-</div>
 
 #### Stopping the Program
 
